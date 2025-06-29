@@ -6,69 +6,79 @@ import React, { useState, useEffect, useRef, use } from 'react';
 import { ActivityIndicator, View, StyleSheet, AppState } from 'react-native';
 
 export default function AppNavegacion() {
-    const [isLoading, setIsLoading] = useState(true);
-    const [userToken, setUserToken] = useState(null);
-    const appState = useRef(AppState.currentState);
+  const [isLoading, setisLoading] = useState(true);
+  const [userToken, setUserToken] = useState(null);
+  const appState = useRef(AppState.currentState);
 
-    const loadToken = async () => {
-        try {
-            const token = await AsyncStorage.getItem('userToken');
-            setUserToken(token);
-        } catch (e) {
-            console.error("Error al cargar el token desde AsyncStorage:", e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    useEffect(() => {
-        loadToken();// Cargar el token al iniciar la aplicación
-    }, []);
+  const loadToken = async () => {
+    
+    try {
+      const token = await AsyncStorage.getItem("userToken");
 
-    // Determinar si el usuario está autenticado
-    // Si el token existe, el usuario está autenticado
-    // Si no, el usuario no está autenticado
-    useEffect (() => {
-        const handleAppStateChange = (nextAppState) => {
-            if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-                console.log("La aplicación ha vuelto a estar activa. Cargando el token...");
-                loadToken(); // Cargar el token cuando la aplicación vuelve a estar activa
-            }
-            appState.current = nextAppState;
-        };
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
-        return () => {
-            subscription?.remove(); // Limpiar el listener al desmontar el componente
-        }
-    }, []);
+      setUserToken(token);
+    } catch (e) {
 
-    // Determinar si el usuario está autenticado
-    // Si el token existe, el usuario está autenticado
-    // Si no, el usuario no está autenticado
-    useEffect(() => {
-        if (!isLoading) {
-            const interval = setInterval(() => {
-                if (AppState.currentState === 'active') {
-                    loadToken(); // Cargar el token cada 2 segundos solo si la aplicación está activa
-                }
-            }, 2000);
-            return () => clearInterval(interval); // Limpiar el intervalo al desmontar el componente
-        }
-    }, [isLoading]);
+    } finally {
+      setisLoading(false);
 
-    if (isLoading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-        );
     }
+  };
 
-    return (
-        <NavigationContainer>
-            
-            {userToken ? <NavegacionPrincipal /> : <AuthNavegacion />}
-        </NavigationContainer>
+  useEffect(() => {
+    loadToken(); // Carga inicial del token
+ 
+  }, []);
+
+  useEffect(() => {
+    // ... (tu código para handleAppStateChange)
+    const handleAppStateChange = (nextAppState) => {
+
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+    
+        loadToken();
+      }
+      appState.current = nextAppState;
+    };
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
     );
+    return () => subscription?.remove();
+  }, []);
+
+  useEffect(() => {
+   
+    if (!isLoading) {
+      const interval = setInterval(() => {
+        if (AppState.currentState === "active") {
+        
+          loadToken();
+        }
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isLoading]);
+
+  // Añadir un console.log justo antes del return final
+  
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#1976D2" />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      {userToken ? <NavegacionPrincipal /> : <AuthNavegacion />}
+    </NavigationContainer>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent'; // Asegúrate de que la ruta sea correcta
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons'; // Para iconos
+import { logoutUser } from '../../Src/Services/AuthService'; // ¡Importar la función de logout!
 
 export default function PerfilScreen() {
     const navigation = useNavigation();
@@ -19,9 +20,6 @@ export default function PerfilScreen() {
     });
 
     const handleLogout = () => {
-        // Lógica de cerrar sesión:
-        // 1. Eliminar token de autenticación (ej. AsyncStorage.removeItem('userToken'))
-        // 2. Redirigir al usuario a la pantalla de Login
         Alert.alert(
             "Cerrar Sesión",
             "¿Estás seguro de que quieres cerrar sesión?",
@@ -32,12 +30,26 @@ export default function PerfilScreen() {
                 },
                 {
                     text: "Sí",
-                    onPress: () => {
-                        console.log("Cerrando sesión...");
-                        // Aquí iría tu lógica real de logout, por ejemplo:
-                        // AsyncStorage.removeItem('userToken');
-                        // navigation.navigate('LoginStack'); // Navegar al stack de autenticación
-                        Alert.alert("Sesión Cerrada", "Has cerrado sesión correctamente.");
+                    onPress: async () => { // ¡Aquí el cambio principal! Hacerla async
+                        console.log("Iniciando proceso de cierre de sesión...");
+                        try {
+                            // 1. Llamar a la función de logout de AuthService
+                            const result = await logoutUser(); // Esto eliminará el token de AsyncStorage y llamará a tu API /logout
+                            
+                            if (result.success) {
+                                console.log("Sesión cerrada exitosamente.");
+                                Alert.alert("Sesión Cerrada", "Has cerrado sesión correctamente.");
+                                // No necesitas llamar a navigation.navigate('Login') o similar aquí.
+                                // AppNavegacion.js detectará que el userToken es null
+                                // y automáticamente cambiará el stack de navegación a AuthNavegacion (Login).
+                            } else {
+                                console.error("Error al cerrar sesión:", result.message);
+                                Alert.alert("Error al cerrar sesión", result.message || "Ocurrió un error inesperado al cerrar sesión.");
+                            }
+                        } catch (error) {
+                            console.error("Error inesperado en handleLogout:", error);
+                            Alert.alert("Error", "Ocurrió un error al intentar cerrar sesión. Por favor, inténtalo de nuevo.");
+                        }
                     }
                 }
             ]
