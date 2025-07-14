@@ -1,203 +1,198 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    ActivityIndicator,
+    Alert // Usando Alert para la retroalimentación al usuario
+} from 'react-native';
+
+
+import { crearEspecialidad, editarEspecialidad } from '../../Src/Services/EspecialidadesService'; // Asegúrate de que la ruta sea correcta
 
 export default function EditarEspecialidad() {
     const navigation = useNavigation();
     const route = useRoute();
 
-    const especialidadToEdit = route.params?.especialidad;
+    // Obtener el objeto de especialidad de los parámetros de navegación, si existe
+    const especialidad = route.params?.especialidad;
 
-    const [id, setId] = useState('');
-    const [nombre, setNombre] = useState('');
-    const [descripcion, setDescripcion] = useState('');
-    const [jefedearea, setJefeDeArea] = useState('');
-    const [fechacreacion, setFechaCreacion] = useState('');
-    const [ultimamodificacion, setUltimaModificacion] = useState('');
+    // Estado para el nombre de la especialidad, inicializado con datos existentes si se está editando
+    const [nombre, setNombre] = useState(especialidad?.nombre || '');
+    // Estado para la descripción de la especialidad, inicializado con datos existentes si se está editando
+    const [descripcion, setDescripcion] = useState(especialidad?.descripcion || '');
+    // Estado para gestionar el indicador de carga durante las llamadas a la API
+    const [loading, setLoading] = useState(false);
 
-    const [isEditing, setIsEditing] = useState(false);
+    // Determinar si el componente está en modo 'edición' o 'creación'
+    const esEdicion = !!especialidad;
 
-    useEffect(() => {
-        if (especialidadToEdit) {
-            setId(especialidadToEdit.id);
-            setNombre(especialidadToEdit.nombre);
-            setDescripcion(especialidadToEdit.descripcion);
-            setJefeDeArea(especialidadToEdit.jefedearea);
-            setFechaCreacion(especialidadToEdit.fechacreacion);
-            setUltimaModificacion(especialidadToEdit.ultimamodificacion);
-            setIsEditing(true);
-        } else {
-            setId('');
-            setNombre('');
-            setDescripcion('');
-            setJefeDeArea('');
-            setFechaCreacion('');
-            setUltimaModificacion('');
-            setIsEditing(false);
-        }
-    }, [especialidadToEdit]);
-
-    const handleSave = () => {
-        if (!nombre || !descripcion || !jefedearea) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos obligatorios (Nombre, Descripción, Jefe de Área).');
+    /**
+     * Maneja el proceso de guardado tanto para crear como para editar especialidades.
+     * Realiza validación, llama al servicio API apropiado y proporciona retroalimentación al usuario.
+     */
+    const handleGuardar = async () => {
+        // Validación básica: asegurar que el nombre de la especialidad no esté vacío
+        if (!nombre.trim()) {
+            Alert.alert('Error', 'Por favor, ingresa el nombre de la especialidad.');
             return;
         }
 
-        const especialidadGuardada = {
-            id: id || String(Date.now()),
-            nombre,
-            descripcion,
-            jefedearea,
-            fechacreacion: isEditing ? fechacreacion : new Date().toISOString().split('T')[0],
-            ultimamodificacion: new Date().toISOString().split('T')[0],
-        };
+        setLoading(true); // Mostrar indicador de carga
 
-        if (isEditing) {
-            Alert.alert(
-                'Especialidad Editada',
-                `\nNombre: ${especialidadGuardada.nombre}\nDescripción: ${especialidadGuardada.descripcion}\nJefe de Área: ${especialidadGuardada.jefedearea}`
-            );
-        } else {
-            Alert.alert(
-                'Especialidad Agregada',
-                `\nNombre: ${especialidadGuardada.nombre}\nDescripción: ${especialidadGuardada.descripcion}\nJefe de Área: ${especialidadGuardada.jefedearea}`
-            );
+        try {
+            let result;
+            // Datos a enviar a la API, incluyendo el nombre y la descripción
+            const dataToSave = {
+                nombre: nombre,
+                descripcion: descripcion // Incluir la descripción
+            };
+
+            if (esEdicion) {
+                // Si está en modo edición, llamar al servicio editarEspecialidad
+                result = await editarEspecialidad(especialidad.id, dataToSave);
+            } else {
+                // Si está en modo creación, llamar al servicio crearEspecialidad
+                result = await crearEspecialidad(dataToSave);
+            }
+
+            if (result.success) {
+                // Mostrar mensaje de éxito y navegar hacia atrás si la operación fue exitosa
+                Alert.alert('Éxito', esEdicion ? 'Especialidad actualizada correctamente' : 'Especialidad creada correctamente');
+                navigation.goBack();
+            } else {
+                // Mostrar mensaje de error si la llamada a la API no fue exitosa
+                Alert.alert('Error', result.message || 'Ocurrió un error al guardar la especialidad');
+            }
+        } catch (error) {
+            // Capturar cualquier error inesperado durante la llamada a la API
+            console.error('Error al guardar especialidad:', error);
+            Alert.alert('Error', 'Ocurrió un error inesperado al guardar la especialidad');
+        } finally {
+            setLoading(false); // Ocultar indicador de carga independientemente del éxito o fracaso
         }
-
-        navigation.goBack();
     };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.keyboardAvoidingContainer}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>
-                    {isEditing ? 'Editar Especialidad' : 'Agregar Nueva Especialidad'}
-                </Text>
+        <View style={styles.container}>
+            <Text style={styles.title}>
+                {esEdicion ? 'Editar Especialidad' : 'Nueva Especialidad'}
+            </Text>
 
-                <View style={styles.formContainer}>
-                    <Text style={styles.label}>Nombre de la Especialidad:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Cardiología"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
+            {/* Campo de entrada para el nombre de la especialidad */}
+            <TextInput
+                style={styles.input}
+                placeholder="Nombre de la Especialidad"
+                value={nombre}
+                onChangeText={setNombre}
+                autoCapitalize="words" // Capitalizar la primera letra de cada palabra
+            />
 
-                    <Text style={styles.label}>Descripción:</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="E.g., Especialidad en el corazón y sistema circulatorio."
-                        value={descripcion}
-                        onChangeText={setDescripcion}
-                        multiline={true}
-                        numberOfLines={4}
-                    />
+            {/* Campo de entrada para la descripción de la especialidad */}
+            <TextInput
+                style={[styles.input, styles.textArea]} // Usar estilos adicionales para el área de texto
+                placeholder="Descripción de la Especialidad"
+                value={descripcion}
+                onChangeText={setDescripcion}
+                multiline // Permitir múltiples líneas
+                numberOfLines={4} // Sugerir 4 líneas visibles
+                textAlignVertical="top" // Alinear el texto en la parte superior
+            />
 
-                    <Text style={styles.label}>Jefe de Área:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Dr. Juan Pérez"
-                        value={jefedearea}
-                        onChangeText={setJefeDeArea}
-                    />
+            {/* Botón Guardar */}
+            <TouchableOpacity
+                style={styles.boton}
+                onPress={handleGuardar}
+                disabled={loading} // Deshabilitar el botón mientras se carga
+            >
+                {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <Text style={styles.textoBoton}>
+                        {esEdicion ? "Guardar Cambios" : "Crear Especialidad"}
+                    </Text>
+                )}
+            </TouchableOpacity>
 
-                    {isEditing && (
-                        <>
-                            <Text style={styles.label}>Fecha de Creación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={fechacreacion}
-                                editable={false}
-                            />
-
-                            <Text style={styles.label}>Última Modificación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={ultimamodificacion}
-                                editable={false}
-                            />
-                        </>
-                    )}
-                </View>
-
-                <BotonComponent
-                    title={isEditing ? "Guardar Cambios" : "Agregar Especialidad"}
-                    onPress={handleSave}
-                />
-
-                <BotonComponent
-                    title="Cancelar"
-                    onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
-                    textStyle={styles.cancelButtonText}
-                />
-            </ScrollView>
-        </KeyboardAvoidingView>
+            {/* Botón Cancelar */}
+            <TouchableOpacity
+                style={styles.botonCancelar}
+                onPress={() => navigation.goBack()} // Navegar hacia atrás sin guardar
+            >
+                <Text style={styles.textoBotonCancelar}>Cancelar</Text>
+            </TouchableOpacity>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    keyboardAvoidingContainer: {
-        flex: 1, // Asegura que KeyboardAvoidingView ocupe todo el espacio
-    },
-    scrollContent: {
-        flexGrow: 1, // Permite que el contenido crezca para llenar el espacio disponible
-        padding: 20, // Padding en el contentContainerStyle para el contenido desplazable
-        backgroundColor: "#f0f4f8",
-        paddingBottom: 40, // Aumenta este valor si los botones aún se cortan o no hay suficiente espacio
+    container: {
+        flex: 1,
+        padding: 24,
+        backgroundColor: '#f8f9fa', // Fondo claro para la pantalla
+        justifyContent: 'center', // Centrar contenido verticalmente
     },
     title: {
-        fontSize: 26,
-        fontWeight: "bold",
-        marginBottom: 20,
-        color: "#333",
-        textAlign: 'center',
-    },
-    formContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    label: {
-        fontSize: 16,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#555',
-        marginTop: 10,
-        marginBottom: 5,
+        marginBottom: 30,
+        textAlign: 'center',
+        color: '#343a40', // Texto más oscuro para el título
     },
     input: {
-        width: '100%',
-        height: 50,
-        borderColor: '#ddd',
+        height: 50, // Altura predeterminada para campos de una línea
+        borderColor: '#ced4da',
         borderWidth: 1,
         borderRadius: 8,
         paddingHorizontal: 15,
-        marginBottom: 15,
-        backgroundColor: '#f9f9f9',
+        marginBottom: 20,
         fontSize: 16,
-        color: '#333',
+        backgroundColor: '#fff', // Fondo blanco para la entrada
+        shadowColor: '#000', // Añadir sombra sutil
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2, // Para sombra en Android
     },
     textArea: {
-        minHeight: 60,
-        textAlignVertical: 'top',
-        paddingVertical: 10,
+        height: 120, // Mayor altura para el área de texto de la descripción
+        paddingVertical: 15, // Padding vertical para el texto multilínea
     },
-    cancelButton: {
-        backgroundColor: '#6c757d',
+    boton: {
+        backgroundColor: '#007BFF', // Color azul primario
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
         marginTop: 10,
-        marginBottom: 20, // Añadir un margen inferior al botón "Cancelar"
+        shadowColor: '#007BFF', // Sombra que coincide con el color del botón
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 5, // Para sombra en Android
     },
-    cancelButtonText: {
+    textoBoton: {
         color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    botonCancelar: {
+        backgroundColor: '#6c757d', // Color gris para cancelar
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 15,
+        shadowColor: '#6c757d',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 5,
+    },
+    textoBotonCancelar: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });

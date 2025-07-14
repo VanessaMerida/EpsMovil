@@ -21,7 +21,6 @@ export default function ListarEspecialidades() {
             if (result.success) {
                 setEspecialidades(result.data);
             } else {
-                // Usar Alert.alert para errores
                 Alert.alert('Error', result.message || 'Error al obtener especialidades');
                 setError(result.message || 'Error al obtener especialidades');
             }

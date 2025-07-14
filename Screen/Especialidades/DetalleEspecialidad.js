@@ -31,9 +31,6 @@ export default function DetalleEspecialidad() {
         <Text style={styles.detailLabel}>Descripción:</Text>
         <Text style={styles.detailText}>{especialidad.descripcion}</Text>
 
-        <Text style={styles.detailLabel}>Jefe de Área:</Text>
-        <Text style={styles.detailText}>{especialidad.jefedearea}</Text>
-
         <Text style={styles.detailLabel}>Fecha de Creación:</Text>
         <Text style={styles.detailText}>{especialidad.fechacreacion}</Text>
 

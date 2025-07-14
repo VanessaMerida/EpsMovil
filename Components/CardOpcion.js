@@ -1,8 +1,6 @@
 // Src/Components/CardOpcion.js
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-// Asegúrate de importar los iconos necesarios aquí si no los pasas como prop
-// import { Ionicons } from '@expo/vector-icons'; // Si 'icon' es solo un nombre de string y lo quieres construir aquí
 
 const CardOpcion = ({ icon, title, description, onPress, iconBgColor }) => {
   return (

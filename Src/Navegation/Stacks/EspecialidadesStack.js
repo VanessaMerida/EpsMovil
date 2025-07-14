@@ -19,7 +19,7 @@ export default function EspecialidadesStack() {
             }}>
             
             <Stack.Screen
-                name="Especialidades"
+                name="ListarEspecialidades"
                 component={ListarEspecialidades}
                 options={{ headerShown: true, title: 'Especialidades' }}
             />
