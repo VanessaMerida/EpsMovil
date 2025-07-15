@@ -30,12 +30,6 @@ export default function DetalleEspecialidad() {
 
         <Text style={styles.detailLabel}>Descripción:</Text>
         <Text style={styles.detailText}>{especialidad.descripcion}</Text>
-
-        <Text style={styles.detailLabel}>Fecha de Creación:</Text>
-        <Text style={styles.detailText}>{especialidad.fechacreacion}</Text>
-
-        <Text style={styles.detailLabel}>Última Modificación:</Text>
-        <Text style={styles.detailText}>{especialidad.ultimamodificacion}</Text>
       </View>
 
       <BotonComponent

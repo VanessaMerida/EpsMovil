@@ -1,66 +1,101 @@
-// DetalleMedico.js
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+// Screens/Medicos/DetalleMedico.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
-import { useNavigation, useRoute } from '@react-navigation/native'; // Importar useRoute
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { getMedicoById } from '../../Src/Services/MedicosService'; // 1. IMPORTAR SERVICIO
 
 export default function DetalleMedico() {
     const navigation = useNavigation();
     const route = useRoute();
+    const medicoId = route.params?.medico.id; // Obtenemos el ID de forma segura
 
-    // Obtener el médico de los parámetros. Si no hay, usar datos por defecto.
-    const medico = route.params?.medico || {
-        id: 'M000',
-        nombre: 'Médico No Seleccionado',
-        especialidad: 'N/A',
-        telefono: 'N/A',
-        email: 'N/A',
-        consultorio: 'N/A',
-        fechacontratacion: 'N/A',
-        ultimamodificacion: 'N/A',
+    // 2. ESTADOS PARA MANEJAR DATOS Y CARGA
+    const [medico, setMedico] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // 3. FUNCIÓN PARA CARGAR DATOS
+    const cargarDetallesMedico = async () => {
+        if (!medicoId) return;
+        setLoading(true);
+        try {
+            const result = await getMedicoById(medicoId);
+            if (result.success) {
+                setMedico(result.data);
+            } else {
+                Alert.alert("Error", "No se pudieron cargar los detalles del médico.");
+            }
+        } catch (error) {
+            Alert.alert("Error", "Error de conexión.");
+        } finally {
+            setLoading(false);
+        }
     };
 
+    // 4. USEEFFECT PARA CARGAR DATOS AL ENFOCAR
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', cargarDetallesMedico);
+        return unsubscribe;
+    }, [navigation, medicoId]);
+
+    // Muestra un indicador de carga
+    if (loading) {
+        return (
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#4CAF50" />
+            </View>
+        );
+    }
+    
+    // Muestra si no hay datos
+    if (!medico) {
+        return (
+            <View style={styles.centered}>
+                <Text>No se encontraron datos para este médico.</Text>
+            </View>
+        );
+    }
+
     return (
-        <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>Detalle de Médico</Text>
             <Text style={styles.subtitle}>Información detallada del médico seleccionado:</Text>
 
             <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Nombre:</Text>
-                <Text style={styles.detailText}>{medico.nombre}</Text>
+                <Text style={styles.detailLabel}>Nombre Completo:</Text>
+                <Text style={styles.detailText}>{medico.nombres} {medico.apellidos}</Text>
 
-                <Text style={styles.detailLabel}>Especialidad:</Text>
-                <Text style={styles.detailText}>{medico.especialidad}</Text>
+                <Text style={styles.detailLabel}>Documento:</Text>
+                <Text style={styles.detailText}>{medico.documento}</Text>
+                
+                <Text style={styles.detailLabel}>Tarjeta Profesional:</Text>
+                <Text style={styles.detailText}>{medico.tarjeta_profesional}</Text>
 
                 <Text style={styles.detailLabel}>Teléfono:</Text>
                 <Text style={styles.detailText}>{medico.telefono}</Text>
 
                 <Text style={styles.detailLabel}>Email:</Text>
                 <Text style={styles.detailText}>{medico.email}</Text>
-
-                <Text style={styles.detailLabel}>Consultorio:</Text>
-                <Text style={styles.detailText}>{medico.consultorio}</Text>
-
-                <Text style={styles.detailLabel}>Fecha de Contratación:</Text>
-                <Text style={styles.detailText}>{medico.fechacontratacion}</Text>
-
-                <Text style={styles.detailLabel}>Última Modificación:</Text>
-                <Text style={styles.detailText}>{medico.ultimamodificacion}</Text>
             </View>
 
             <BotonComponent
                 title="Editar Médico"
-                onPress={() => navigation.navigate('EditarMedico', { medico: medico })} // Pasa el médico a la pantalla de edición
+                onPress={() => navigation.navigate('EditarMedico', { medico: medico })}
             />
-        </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        flexGrow: 1,
         padding: 20,
         backgroundColor: "#f0f4f8",
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     title: {
         fontSize: 26,

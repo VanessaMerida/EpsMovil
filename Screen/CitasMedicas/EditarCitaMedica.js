@@ -1,211 +1,187 @@
-// EditarCitaMedica.js
+// Screen/CitasMedicas/EditarCitaMedica.js
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Picker } from '@react-native-picker/picker';
+
+// 1. Importar todos los servicios necesarios
+import { crearCitaMedica, editarCitaMedica } from '../../Src/Services/CitasMedicasService';
+import { listarPacientes } from '../../Src/Services/PacientesService';
+import { listarMedicos } from '../../Src/Services/MedicosService';
+import { listarEspecialidades } from '../../Src/Services/EspecialidadesService';
+import { listarConsultorios } from '../../Src/Services/ConsultoriosService';
 
 export default function EditarCitaMedica() {
     const navigation = useNavigation();
     const route = useRoute();
+    const citaToEdit = route.params?.citaMedica;
 
-    const citaMedicaToEdit = route.params?.citaMedica;
+    // 2. Estados para los datos de la cita y las listas de los pickers
+    const [pacienteId, setPacienteId] = useState(null);
+    const [medicoId, setMedicoId] = useState(null);
+    const [especialidadId, setEspecialidadId] = useState(null);
+    const [consultorioId, setConsultorioId] = useState(null);
+    const [fechaHora, setFechaHora] = useState('');
+    const [estado, setEstado] = useState('programada');
+    const [notas, setNotas] = useState('');
+    
+    // Estados para almacenar las listas que llenan los pickers
+    const [pacientes, setPacientes] = useState([]);
+    const [medicos, setMedicos] = useState([]);
+    const [especialidades, setEspecialidades] = useState([]);
+    const [consultorios, setConsultorios] = useState([]);
+    
+    const [loading, setLoading] = useState(false);
+    const [loadingPickers, setLoadingPickers] = useState(true);
+    const isEditing = !!citaToEdit;
 
-    const [id, setId] = useState('');
-    const [paciente, setPaciente] = useState('');
-    const [medico, setMedico] = useState('');
-    const [especialidad, setEspecialidad] = useState('');
-    const [fecha, setFecha] = useState('');
-    const [hora, setHora] = useState('');
-    const [consultorio, setConsultorio] = useState('');
-    const [estado, setEstado] = useState('');
-    const [motivo, setMotivo] = useState('');
-    const [fechaCreacion, setFechaCreacion] = useState('');
-    const [ultimaModificacion, setUltimaModificacion] = useState('');
-
-    const [isEditing, setIsEditing] = useState(false);
-
+    // 3. Cargar datos para los pickers cuando el componente se monta
     useEffect(() => {
-        if (citaMedicaToEdit) {
-            setId(citaMedicaToEdit.id);
-            setPaciente(citaMedicaToEdit.paciente);
-            setMedico(citaMedicaToEdit.medico);
-            setEspecialidad(citaMedicaToEdit.especialidad);
-            setFecha(citaMedicaToEdit.fecha);
-            setHora(citaMedicaToEdit.hora);
-            setConsultorio(citaMedicaToEdit.consultorio);
-            setEstado(citaMedicaToEdit.estado);
-            setMotivo(citaMedicaToEdit.motivo);
-            setFechaCreacion(citaMedicaToEdit.fechaCreacion);
-            setUltimaModificacion(citaMedicaToEdit.ultimaModificacion);
-            setIsEditing(true);
-        } else {
-            // Reiniciar campos para "Agregar Cita Médica"
-            setId('');
-            setPaciente('');
-            setMedico('');
-            setEspecialidad('');
-            setFecha('');
-            setHora('');
-            setConsultorio('');
-            setEstado('');
-            setMotivo('');
-            setFechaCreacion('');
-            setUltimaModificacion('');
-            setIsEditing(false);
-        }
-    }, [citaMedicaToEdit]);
+        const cargarDatos = async () => {
+            try {
+                // Cargar todas las listas en paralelo para mayor eficiencia
+                const [pacientesRes, medicosRes, especialidadesRes, consultoriosRes] = await Promise.all([
+                    listarPacientes(),
+                    listarMedicos(),
+                    listarEspecialidades(),
+                    listarConsultorios()
+                ]);
 
-    const handleSave = () => {
-        if (!paciente || !medico || !especialidad || !fecha || !hora || !consultorio || !estado || !motivo) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos obligatorios (Paciente, Médico, Especialidad, Fecha, Hora, Consultorio, Estado, Motivo).');
+                if (pacientesRes.success) setPacientes(pacientesRes.data);
+                if (medicosRes.success) setMedicos(medicosRes.data);
+                if (especialidadesRes.success) setEspecialidades(especialidadesRes.data);
+                if (consultoriosRes.success) setConsultorios(consultoriosRes.data);
+
+                // Si estamos editando, pre-seleccionar los valores
+                if (isEditing) {
+                    setPacienteId(citaToEdit.paciente_id);
+                    setMedicoId(citaToEdit.medico_id);
+                    setEspecialidadId(citaToEdit.especialidad_id);
+                    setConsultorioId(citaToEdit.consultorio_id);
+                    setFechaHora(citaToEdit.fecha_hora.split(' ')[0]); // Solo la fecha para el ejemplo
+                    setEstado(citaToEdit.estado);
+                    setNotas(citaToEdit.notas || '');
+                }
+
+            } catch (error) {
+                Alert.alert("Error", "No se pudieron cargar los datos para agendar la cita.");
+            } finally {
+                setLoadingPickers(false);
+            }
+        };
+
+        cargarDatos();
+    }, [citaToEdit]);
+    
+    // 4. Lógica para guardar la cita
+    const handleSave = async () => {
+        if (!pacienteId || !medicoId || !especialidadId || !consultorioId || !fechaHora) {
+            Alert.alert('Campos incompletos', 'Por favor, selecciona todos los campos requeridos.');
             return;
         }
 
-        const citaGuardada = {
-            id: id || String(Date.now()), // Generar ID para nuevo, o usar el existente
-            paciente,
-            medico,
-            especialidad,
-            fecha,
-            hora,
-            consultorio,
-            estado,
-            motivo,
-            fechaCreacion: isEditing ? fechaCreacion : new Date().toISOString().split('T')[0],
-            ultimaModificacion: new Date().toISOString().split('T')[0],
+        setLoading(true);
+        const citaData = {
+            paciente_id: pacienteId,
+            medico_id: medicoId,
+            especialidad_id: especialidadId,
+            consultorio_id: consultorioId,
+            fecha_hora: `${fechaHora} 00:00:00`, // Añadimos una hora por defecto
+            estado: estado,
+            notas: notas,
         };
 
-        if (isEditing) {
-            Alert.alert(
-                'Cita Médica Editada',
-                `Se ha guardado la cita:\nPaciente: ${citaGuardada.paciente}\nFecha: ${citaGuardada.fecha} ${citaGuardada.hora}`
-            );
-            // Lógica para enviar datos actualizados a tu API (PUT/PATCH)
-        } else {
-            Alert.alert(
-                'Cita Médica Agregada',
-                `Se ha agregado la nueva cita:\nPaciente: ${citaGuardada.paciente}\nFecha: ${citaGuardada.fecha} ${citaGuardada.hora}`
-            );
-            // Lógica para enviar nuevos datos a tu API (POST)
+        try {
+            const result = isEditing
+                ? await editarCitaMedica(citaToEdit.id, citaData)
+                : await crearCitaMedica(citaData);
+            
+            if (result.success) {
+                Alert.alert('Éxito', isEditing ? 'Cita actualizada' : 'Cita creada');
+                navigation.goBack();
+            } else {
+                Alert.alert('Error', result.message || 'No se pudo guardar la cita.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Ocurrió un error inesperado.');
+        } finally {
+            setLoading(false);
         }
-
-        navigation.goBack(); // Volver a la lista después de guardar
     };
-
+    
+    // Estilo para los Pickers
+    const pickerStyle = {
+        inputIOS: styles.pickerInput,
+        inputAndroid: styles.pickerInput,
+    };
+    
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>
-                    {isEditing ? 'Editar Cita Médica' : 'Agregar Nueva Cita Médica'}
-                </Text>
+                <Text style={styles.title}>{isEditing ? 'Editar Cita Médica' : 'Agregar Nueva Cita'}</Text>
 
+                {loadingPickers ? <ActivityIndicator size="large" color="#6A5ACD" /> : (
                 <View style={styles.formCard}>
                     <Text style={styles.label}>Paciente:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nombre del Paciente"
-                        value={paciente}
-                        onChangeText={setPaciente}
-                    />
+                    <View style={styles.pickerContainer}>
+                        <Picker selectedValue={pacienteId} onValueChange={(itemValue) => setPacienteId(itemValue)} style={styles.picker}>
+                            <Picker.Item label="-- Seleccione un Paciente --" value={null} />
+                            {pacientes.map(p => <Picker.Item key={p.id} label={`${p.nombres} ${p.apellidos}`} value={p.id} />)}
+                        </Picker>
+                    </View>
 
                     <Text style={styles.label}>Médico:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nombre del Médico"
-                        value={medico}
-                        onChangeText={setMedico}
-                    />
+                    <View style={styles.pickerContainer}>
+                        <Picker selectedValue={medicoId} onValueChange={(itemValue) => setMedicoId(itemValue)} style={styles.picker}>
+                            <Picker.Item label="-- Seleccione un Médico --" value={null} />
+                            {medicos.map(m => <Picker.Item key={m.id} label={`${m.nombres} ${m.apellidos}`} value={m.id} />)}
+                        </Picker>
+                    </View>
 
                     <Text style={styles.label}>Especialidad:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Cardiología"
-                        value={especialidad}
-                        onChangeText={setEspecialidad}
-                    />
-
-                    <Text style={styles.label}>Fecha (YYYY-MM-DD):</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 2025-07-01"
-                        value={fecha}
-                        onChangeText={setFecha}
-                        keyboardType="numbers-and-punctuation"
-                    />
-
-                    <Text style={styles.label}>Hora (HH:MM AM/PM):</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 10:00 AM"
-                        value={hora}
-                        onChangeText={setHora}
-                    />
-
+                    <View style={styles.pickerContainer}>
+                        <Picker selectedValue={especialidadId} onValueChange={(itemValue) => setEspecialidadId(itemValue)} style={styles.picker}>
+                            <Picker.Item label="-- Seleccione una Especialidad --" value={null} />
+                            {especialidades.map(e => <Picker.Item key={e.id} label={e.nombre} value={e.id} />)}
+                        </Picker>
+                    </View>
+                    
                     <Text style={styles.label}>Consultorio:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., C101"
-                        value={consultorio}
-                        onChangeText={setConsultorio}
-                    />
-
+                    <View style={styles.pickerContainer}>
+                        <Picker selectedValue={consultorioId} onValueChange={(itemValue) => setConsultorioId(itemValue)} style={styles.picker}>
+                            <Picker.Item label="-- Seleccione un Consultorio --" value={null} />
+                            {consultorios.map(c => <Picker.Item key={c.id} label={c.nombre} value={c.id} />)}
+                        </Picker>
+                    </View>
+                    
+                    <Text style={styles.label}>Fecha (YYYY-MM-DD):</Text>
+                    <TextInput style={styles.input} placeholder="Ej: 2025-12-31" value={fechaHora} onChangeText={setFechaHora} />
+                    
                     <Text style={styles.label}>Estado:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Confirmada, Pendiente, Cancelada"
-                        value={estado}
-                        onChangeText={setEstado}
-                    />
-
-                    <Text style={styles.label}>Motivo de la Cita:</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="Breve descripción del motivo"
-                        value={motivo}
-                        onChangeText={setMotivo}
-                        multiline={true}
-                        numberOfLines={3}
-                    />
-
-                    {isEditing && (
-                        <>
-                            <Text style={styles.label}>Fecha de Creación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={fechaCreacion}
-                                editable={false}
-                            />
-
-                            <Text style={styles.label}>Última Modificación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={ultimaModificacion}
-                                editable={false}
-                            />
-                        </>
-                    )}
+                    <View style={styles.pickerContainer}>
+                        <Picker selectedValue={estado} onValueChange={(itemValue) => setEstado(itemValue)} style={styles.picker}>
+                            <Picker.Item label="Programada" value="programada" />
+                            <Picker.Item label="Confirmada" value="confirmada" />
+                            <Picker.Item label="Cancelada" value="cancelada" />
+                        </Picker>
+                    </View>
+                    
+                    <Text style={styles.label}>Notas Adicionales:</Text>
+                    <TextInput style={[styles.input, styles.textArea]} placeholder="Motivo de la consulta, etc." value={notas} onChangeText={setNotas} multiline={true} numberOfLines={3} />
                 </View>
+                )}
             </ScrollView>
 
             <View style={styles.fixedButtonsContainer}>
-                <BotonComponent
-                    title={isEditing ? "Guardar Cambios" : "Agregar Cita Médica"}
-                    onPress={handleSave}
-                    style={styles.saveButton}
-                />
-                <BotonComponent
-                    title="Cancelar"
-                    onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
-                    textStyle={styles.cancelButtonText}
-                />
+                <BotonComponent title={isEditing ? "Guardar Cambios" : "Agregar Cita"} onPress={handleSave} isLoading={loading} disabled={loading} style={styles.saveButton} />
+                <BotonComponent title="Cancelar" onPress={() => navigation.goBack()} style={styles.cancelButton} textStyle={styles.cancelButtonText} />
             </View>
         </KeyboardAvoidingView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
@@ -255,9 +231,21 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     textArea: {
-        minHeight: 50,
+        minHeight: 80,
         textAlignVertical: 'top',
         paddingVertical: 10,
+    },
+    pickerContainer: {
+        borderColor: '#ddd',
+        borderWidth: 1,
+        borderRadius: 8,
+        marginBottom: 15,
+        backgroundColor: '#f9f9f9',
+    },
+    picker: {
+        width: '100%',
+        height: 50,
+        color: '#333',
     },
     fixedButtonsContainer: {
         paddingHorizontal: 20,
@@ -268,11 +256,11 @@ const styles = StyleSheet.create({
         borderColor: '#eee',
     },
     saveButton: {
-        backgroundColor: '#4CAF50', // Verde para guardar
+        backgroundColor: '#4CAF50',
         marginBottom: 10,
     },
     cancelButton: {
-        backgroundColor: '#6c757d', // Gris para cancelar
+        backgroundColor: '#6c757d',
     },
     cancelButtonText: {
         color: '#fff',

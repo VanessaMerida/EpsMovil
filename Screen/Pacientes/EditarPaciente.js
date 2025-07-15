@@ -1,91 +1,62 @@
-// EditarPaciente.js
+// Screens/Pacientes/EditarPaciente.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { crearPaciente, editarPaciente } from '../../Src/Services/PacientesService'; // 1. IMPORTAR
 
 export default function EditarPaciente() {
     const navigation = useNavigation();
     const route = useRoute();
-
     const pacienteToEdit = route.params?.paciente;
 
-    const [id, setId] = useState('');
-    const [nombre, setNombre] = useState('');
-    const [apellido, setApellido] = useState('');
-    const [fechaNacimiento, setFechaNacimiento] = useState('');
-    const [genero, setGenero] = useState('');
+    // 2. ESTADOS DEL FORMULARIO
+    const [nombres, setNombres] = useState('');
+    const [apellidos, setApellidos] = useState('');
+    const [documento, setDocumento] = useState('');
     const [telefono, setTelefono] = useState('');
     const [email, setEmail] = useState('');
-    const [direccion, setDireccion] = useState('');
-    const [fechaRegistro, setFechaRegistro] = useState('');
-    const [ultimaActualizacion, setUltimaActualizacion] = useState('');
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const isEditing = !!pacienteToEdit;
 
+    // 3. LLENAR FORMULARIO SI ES EDICIÓN
     useEffect(() => {
         if (pacienteToEdit) {
-            setId(pacienteToEdit.id);
-            setNombre(pacienteToEdit.nombre);
-            setApellido(pacienteToEdit.apellido);
-            setFechaNacimiento(pacienteToEdit.fechaNacimiento);
-            setGenero(pacienteToEdit.genero);
-            setTelefono(pacienteToEdit.telefono);
-            setEmail(pacienteToEdit.email);
-            setDireccion(pacienteToEdit.direccion);
-            setFechaRegistro(pacienteToEdit.fechaRegistro);
-            setUltimaActualizacion(pacienteToEdit.ultimaActualizacion);
-            setIsEditing(true);
-        } else {
-            // Reiniciar campos para "Agregar Paciente"
-            setId('');
-            setNombre('');
-            setApellido('');
-            setFechaNacimiento('');
-            setGenero('');
-            setTelefono('');
-            setEmail('');
-            setDireccion('');
-            setFechaRegistro('');
-            setUltimaActualizacion('');
-            setIsEditing(false);
+            setNombres(pacienteToEdit.nombres || '');
+            setApellidos(pacienteToEdit.apellidos || '');
+            setDocumento(pacienteToEdit.documento || '');
+            setTelefono(pacienteToEdit.telefono || '');
+            setEmail(pacienteToEdit.email || '');
         }
     }, [pacienteToEdit]);
 
-    const handleSave = () => {
-        if (!nombre || !apellido || !fechaNacimiento || !genero || !telefono || !email || !direccion) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos obligatorios (Nombre, Apellido, Fecha de Nacimiento, Género, Teléfono, Email, Dirección).');
+    // 4. LÓGICA DE GUARDADO
+    const handleSave = async () => {
+        if (!nombres || !apellidos || !documento) {
+            Alert.alert('Campos incompletos', 'Nombre, Apellidos y Documento son obligatorios.');
             return;
         }
 
-        const pacienteGuardado = {
-            id: id || String(Date.now()), // Generar ID para nuevo, o usar el existente
-            nombre,
-            apellido,
-            fechaNacimiento,
-            genero,
-            telefono,
-            email,
-            direccion,
-            fechaRegistro: isEditing ? fechaRegistro : new Date().toISOString().split('T')[0],
-            ultimaActualizacion: new Date().toISOString().split('T')[0],
-        };
+        setLoading(true);
+        const pacienteData = { nombres, apellidos, documento, telefono, email };
 
-        if (isEditing) {
-            Alert.alert(
-                'Paciente Editado',
-                `Se ha guardado el paciente:\nNombre: ${pacienteGuardado.nombre} ${pacienteGuardado.apellido}\nTeléfono: ${pacienteGuardado.telefono}`
-            );
-            // Lógica para enviar datos actualizados a tu API (PUT/PATCH)
-        } else {
-            Alert.alert(
-                'Paciente Agregado',
-                `Se ha agregado el nuevo paciente:\nNombre: ${pacienteGuardado.nombre} ${pacienteGuardado.apellido}\nTeléfono: ${pacienteGuardado.telefono}`
-            );
-            // Lógica para enviar nuevos datos a tu API (POST)
+        try {
+            const result = isEditing
+                ? await editarPaciente(pacienteToEdit.id, pacienteData)
+                : await crearPaciente(pacienteData);
+            
+            if (result.success) {
+                Alert.alert('Éxito', isEditing ? 'Paciente actualizado' : 'Paciente creado');
+                navigation.goBack();
+            } else {
+                Alert.alert('Error', result.message || 'No se pudo guardar el paciente.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Ocurrió un error inesperado.');
+        } finally {
+            setLoading(false);
         }
-
-        navigation.goBack(); // Volver a la lista después de guardar
     };
 
     return (
@@ -99,85 +70,20 @@ export default function EditarPaciente() {
                 </Text>
 
                 <View style={styles.formCard}>
-                    <Text style={styles.label}>Nombre:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Carlos"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
+                    <Text style={styles.label}>Nombres:</Text>
+                    <TextInput style={styles.input} placeholder="Nombres del paciente" value={nombres} onChangeText={setNombres} />
+                    
+                    <Text style={styles.label}>Apellidos:</Text>
+                    <TextInput style={styles.input} placeholder="Apellidos del paciente" value={apellidos} onChangeText={setApellidos} />
 
-                    <Text style={styles.label}>Apellido:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., García"
-                        value={apellido}
-                        onChangeText={setApellido}
-                    />
-
-                    <Text style={styles.label}>Fecha de Nacimiento (YYYY-MM-DD):</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 1990-01-15"
-                        value={fechaNacimiento}
-                        onChangeText={setFechaNacimiento}
-                        keyboardType="numbers-and-punctuation"
-                    />
-
-                    <Text style={styles.label}>Género:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Masculino / Femenino"
-                        value={genero}
-                        onChangeText={setGenero}
-                    />
+                    <Text style={styles.label}>Documento:</Text>
+                    <TextInput style={styles.input} placeholder="Número de documento" value={documento} onChangeText={setDocumento} keyboardType="numeric" />
 
                     <Text style={styles.label}>Teléfono:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 555-1111"
-                        value={telefono}
-                        onChangeText={setTelefono}
-                        keyboardType="phone-pad"
-                    />
+                    <TextInput style={styles.input} placeholder="E.g., 3001234567" value={telefono} onChangeText={setTelefono} keyboardType="phone-pad" />
 
                     <Text style={styles.label}>Email:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., paciente@example.com"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-
-                    <Text style={styles.label}>Dirección:</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="E.g., Calle 1 # 2-34"
-                        value={direccion}
-                        onChangeText={setDireccion}
-                        multiline={true}
-                        numberOfLines={3}
-                    />
-
-                    {isEditing && (
-                        <>
-                            <Text style={styles.label}>Fecha de Registro:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={fechaRegistro}
-                                editable={false}
-                            />
-
-                            <Text style={styles.label}>Última Actualización:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={ultimaActualizacion}
-                                editable={false}
-                            />
-                        </>
-                    )}
+                    <TextInput style={styles.input} placeholder="E.g., paciente@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
                 </View>
             </ScrollView>
 
@@ -185,6 +91,8 @@ export default function EditarPaciente() {
                 <BotonComponent
                     title={isEditing ? "Guardar Cambios" : "Agregar Paciente"}
                     onPress={handleSave}
+                    isLoading={loading}
+                    disabled={loading}
                     style={styles.saveButton}
                 />
                 <BotonComponent
@@ -245,11 +153,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
     },
-    textArea: {
-        minHeight: 50,
-        textAlignVertical: 'top',
-        paddingVertical: 10,
-    },
     fixedButtonsContainer: {
         paddingHorizontal: 20,
         paddingTop: 10,
@@ -260,6 +163,7 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         marginBottom: 10,
+        backgroundColor: '#FF6347',
     },
     cancelButton: {
         backgroundColor: '#6c757d',

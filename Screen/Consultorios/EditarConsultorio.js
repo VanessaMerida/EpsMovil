@@ -1,71 +1,62 @@
-// EditarConsultorio.js
+// Screens/Consultorios/EditarConsultorio.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { crearConsultorio, editarConsultorio } from '../../Src/Services/ConsultoriosService'; // 1. IMPORTAR
 
 export default function EditarConsultorio() {
     const navigation = useNavigation();
     const route = useRoute();
-
     const consultorioToEdit = route.params?.consultorio;
 
-    const [id, setId] = useState('');
+    // 2. ESTADOS DEL FORMULARIO
     const [nombre, setNombre] = useState('');
     const [ubicacion, setUbicacion] = useState('');
+    // Mantenemos estos campos para el formulario, aunque no estén en la migración
     const [capacidad, setCapacidad] = useState('');
     const [disponibilidad, setDisponibilidad] = useState('');
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const isEditing = !!consultorioToEdit;
 
+    // 3. LLENAR FORMULARIO AL EDITAR
     useEffect(() => {
         if (consultorioToEdit) {
-            setId(consultorioToEdit.id);
-            setNombre(consultorioToEdit.nombre);
-            setUbicacion(consultorioToEdit.ubicacion);
-            setCapacidad(consultorioToEdit.capacidad);
-            setDisponibilidad(consultorioToEdit.disponibilidad);
-            setIsEditing(true);
-        } else {
-            // Reiniciar campos para "Agregar Consultorio"
-            setId('');
-            setNombre('');
-            setUbicacion('');
-            setCapacidad('');
-            setDisponibilidad('');
-            setIsEditing(false);
+            setNombre(consultorioToEdit.nombre || '');
+            setUbicacion(consultorioToEdit.ubicacion || '');
+        
         }
     }, [consultorioToEdit]);
 
-    const handleSave = () => {
-        if (!nombre || !ubicacion || !capacidad || !disponibilidad) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos obligatorios (Nombre, Ubicación, Capacidad, Disponibilidad).');
+    // 4. LÓGICA PARA GUARDAR
+    const handleSave = async () => {
+        if (!nombre || !ubicacion) {
+            Alert.alert('Campos incompletos', 'Por favor, rellena Nombre y Ubicación.');
             return;
         }
 
-        const consultorioGuardado = {
-            id: id || String(Date.now()), // Generar ID para nuevo, o usar el existente
-            nombre,
-            ubicacion,
-            capacidad,
-            disponibilidad,
-        };
+        setLoading(true);
 
-        if (isEditing) {
-            Alert.alert(
-                'Consultorio Editado',
-                `Se ha guardado el consultorio:\nNombre: ${consultorioGuardado.nombre}\nUbicación: ${consultorioGuardado.ubicacion}`
-            );
-            // Lógica para enviar datos actualizados a tu API (PUT/PATCH)
-        } else {
-            Alert.alert(
-                'Consultorio Agregado',
-                `Se ha agregado el nuevo consultorio:\nNombre: ${consultorioGuardado.nombre}\nUbicación: ${consultorioGuardado.ubicacion}`
-            );
-            // Lógica para enviar nuevos datos a tu API (POST)
+        // Solo enviamos los datos que la API espera (según tu migración)
+        const consultorioData = { nombre, ubicacion };
+
+        try {
+            const result = isEditing
+                ? await editarConsultorio(consultorioToEdit.id, consultorioData)
+                : await crearConsultorio(consultorioData);
+
+            if (result.success) {
+                Alert.alert('Éxito', isEditing ? 'Consultorio actualizado' : 'Consultorio creado');
+                navigation.goBack();
+            } else {
+                Alert.alert('Error', result.message || 'Ocurrió un error al guardar.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Ocurrió un error inesperado.');
+        } finally {
+            setLoading(false);
         }
-
-        navigation.goBack(); // Volver a la lista después de guardar
     };
 
     return (
@@ -80,38 +71,10 @@ export default function EditarConsultorio() {
 
                 <View style={styles.formCard}>
                     <Text style={styles.label}>Nombre del Consultorio:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Consultorio Central 1"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
+                    <TextInput style={styles.input} placeholder="E.g., Consultorio Central 1" value={nombre} onChangeText={setNombre} />
 
                     <Text style={styles.label}>Ubicación:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Calle Falsa 123"
-                        value={ubicacion}
-                        onChangeText={setUbicacion}
-                    />
-
-                    <Text style={styles.label}>Capacidad:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 2 médicos, 10 pacientes"
-                        value={capacidad}
-                        onChangeText={setCapacidad}
-                    />
-
-                    <Text style={styles.label}>Disponibilidad:</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="E.g., Lunes a Viernes 8AM-6PM"
-                        value={disponibilidad}
-                        onChangeText={setDisponibilidad}
-                        multiline={true}
-                        numberOfLines={3}
-                    />
+                    <TextInput style={styles.input} placeholder="E.g., Calle Falsa 123" value={ubicacion} onChangeText={setUbicacion} />
                 </View>
             </ScrollView>
 
@@ -119,6 +82,8 @@ export default function EditarConsultorio() {
                 <BotonComponent
                     title={isEditing ? "Guardar Cambios" : "Agregar Consultorio"}
                     onPress={handleSave}
+                    isLoading={loading}
+                    disabled={loading}
                     style={styles.saveButton}
                 />
                 <BotonComponent
@@ -180,7 +145,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     textArea: {
-        minHeight: 80, // Ajustado para Consultorios
+        minHeight: 80,
         textAlignVertical: 'top',
         paddingVertical: 10,
     },
@@ -194,6 +159,7 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         marginBottom: 10,
+        backgroundColor: '#007BFF'
     },
     cancelButton: {
         backgroundColor: '#6c757d',

@@ -1,83 +1,65 @@
-// EditarMedico.js
+// Screens/Medicos/EditarMedico.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { crearMedico, editarMedico } from '../../Src/Services/MedicosService'; // 1. IMPORTAR SERVICIOS
 
 export default function EditarMedico() {
     const navigation = useNavigation();
     const route = useRoute();
-
     const medicoToEdit = route.params?.medico;
 
-    const [id, setId] = useState('');
-    const [nombre, setNombre] = useState('');
-    const [especialidad, setEspecialidad] = useState('');
+    // 2. ESTADOS PARA LOS CAMPOS DEL FORMULARIO
+    const [nombres, setNombres] = useState('');
+    const [apellidos, setApellidos] = useState('');
+    const [documento, setDocumento] = useState('');
+    const [tarjeta_profesional, setTarjetaProfesional] = useState('');
     const [telefono, setTelefono] = useState('');
     const [email, setEmail] = useState('');
-    const [consultorio, setConsultorio] = useState('');
-    const [fechacontratacion, setFechaContratacion] = useState('');
-    const [ultimamodificacion, setUltimaModificacion] = useState('');
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const isEditing = !!medicoToEdit;
 
+    // 3. USEEFFECT PARA LLENAR EL FORMULARIO SI ESTAMOS EDITANDO
     useEffect(() => {
         if (medicoToEdit) {
-            setId(medicoToEdit.id);
-            setNombre(medicoToEdit.nombre);
-            setEspecialidad(medicoToEdit.especialidad);
-            setTelefono(medicoToEdit.telefono);
-            setEmail(medicoToEdit.email);
-            setConsultorio(medicoToEdit.consultorio);
-            setFechaContratacion(medicoToEdit.fechacontratacion);
-            setUltimaModificacion(medicoToEdit.ultimamodificacion);
-            setIsEditing(true);
-        } else {
-            // Reiniciar campos para "Agregar Médico"
-            setId('');
-            setNombre('');
-            setEspecialidad('');
-            setTelefono('');
-            setEmail('');
-            setConsultorio('');
-            setFechaContratacion('');
-            setUltimaModificacion('');
-            setIsEditing(false);
+            setNombres(medicoToEdit.nombres || '');
+            setApellidos(medicoToEdit.apellidos || '');
+            setDocumento(medicoToEdit.documento || '');
+            setTarjetaProfesional(medicoToEdit.tarjeta_profesional || '');
+            setTelefono(medicoToEdit.telefono || '');
+            setEmail(medicoToEdit.email || '');
         }
     }, [medicoToEdit]);
 
-    const handleSave = () => {
-        if (!nombre || !especialidad || !telefono || !email || !consultorio) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena todos los campos obligatorios (Nombre, Especialidad, Teléfono, Email, Consultorio).');
+    // 4. LÓGICA PARA GUARDAR DATOS
+    const handleSave = async () => {
+        if (!nombres || !apellidos || !documento || !tarjeta_profesional) {
+            Alert.alert('Campos incompletos', 'Por favor, rellena los campos obligatorios.');
             return;
         }
 
-        const medicoGuardado = {
-            id: id || String(Date.now()), // Generar ID para nuevo, o usar el existente
-            nombre,
-            especialidad,
-            telefono,
-            email,
-            consultorio,
-            fechacontratacion: isEditing ? fechacontratacion : new Date().toISOString().split('T')[0],
-            ultimamodificacion: new Date().toISOString().split('T')[0],
-        };
+        setLoading(true);
 
-        if (isEditing) {
-            Alert.alert(
-                'Médico Editado',
-                `Se ha guardado el médico:\nNombre: ${medicoGuardado.nombre}\nEspecialidad: ${medicoGuardado.especialidad}`
-            );
-            // Lógica para enviar datos actualizados a tu API (PUT/PATCH)
-        } else {
-            Alert.alert(
-                'Médico Agregado',
-                `Se ha agregado el nuevo médico:\nNombre: ${medicoGuardado.nombre}\nEspecialidad: ${medicoGuardado.especialidad}`
-            );
-            // Lógica para enviar nuevos datos a tu API (POST)
+        const medicoData = { nombres, apellidos, documento, tarjeta_profesional, telefono, email };
+
+        try {
+            const result = isEditing 
+                ? await editarMedico(medicoToEdit.id, medicoData)
+                : await crearMedico(medicoData);
+
+            if (result.success) {
+                Alert.alert('Éxito', isEditing ? 'Médico actualizado correctamente' : 'Médico creado correctamente');
+                navigation.goBack();
+            } else {
+                Alert.alert('Error', result.message || 'Ocurrió un error al guardar.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Ocurrió un error inesperado al guardar.');
+        } finally {
+            setLoading(false);
         }
-
-        navigation.goBack(); // Volver a la lista después de guardar
     };
 
     return (
@@ -91,66 +73,23 @@ export default function EditarMedico() {
                 </Text>
 
                 <View style={styles.formCard}>
-                    <Text style={styles.label}>Nombre del Médico:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Dr. Juan Pérez"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
+                    <Text style={styles.label}>Nombres:</Text>
+                    <TextInput style={styles.input} placeholder="Nombres del médico" value={nombres} onChangeText={setNombres} />
 
-                    <Text style={styles.label}>Especialidad:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Cardiología"
-                        value={especialidad}
-                        onChangeText={setEspecialidad}
-                    />
+                    <Text style={styles.label}>Apellidos:</Text>
+                    <TextInput style={styles.input} placeholder="Apellidos del médico" value={apellidos} onChangeText={setApellidos} />
 
+                    <Text style={styles.label}>Documento de Identidad:</Text>
+                    <TextInput style={styles.input} placeholder="Número de documento" value={documento} onChangeText={setDocumento} keyboardType="numeric" />
+
+                    <Text style={styles.label}>Tarjeta Profesional:</Text>
+                    <TextInput style={styles.input} placeholder="Número de tarjeta profesional" value={tarjeta_profesional} onChangeText={setTarjetaProfesional} />
+                    
                     <Text style={styles.label}>Teléfono:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 555-1234"
-                        value={telefono}
-                        onChangeText={setTelefono}
-                        keyboardType="phone-pad"
-                    />
+                    <TextInput style={styles.input} placeholder="E.g., 3001234567" value={telefono} onChangeText={setTelefono} keyboardType="phone-pad" />
 
                     <Text style={styles.label}>Email:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., juan.perez@example.com"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-
-                    <Text style={styles.label}>Consultorio:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., C101"
-                        value={consultorio}
-                        onChangeText={setConsultorio}
-                    />
-
-                    {isEditing && (
-                        <>
-                            <Text style={styles.label}>Fecha de Contratación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={fechacontratacion}
-                                editable={false}
-                            />
-
-                            <Text style={styles.label}>Última Modificación:</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={ultimamodificacion}
-                                editable={false}
-                            />
-                        </>
-                    )}
+                    <TextInput style={styles.input} placeholder="E.g., medico@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
                 </View>
             </ScrollView>
 
@@ -158,6 +97,8 @@ export default function EditarMedico() {
                 <BotonComponent
                     title={isEditing ? "Guardar Cambios" : "Agregar Médico"}
                     onPress={handleSave}
+                    isLoading={loading}
+                    disabled={loading}
                     style={styles.saveButton}
                 />
                 <BotonComponent
@@ -171,6 +112,7 @@ export default function EditarMedico() {
     );
 }
 
+// ... (tus estilos existentes, no necesitan cambios)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -179,7 +121,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         padding: 20,
-        paddingBottom: 20, // Espacio antes del contenedor fijo de botones
+        paddingBottom: 20,
     },
     title: {
         fontSize: 26,
@@ -218,11 +160,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
     },
-    textArea: {
-        minHeight: 100,
-        textAlignVertical: 'top',
-        paddingVertical: 10,
-    },
     fixedButtonsContainer: {
         paddingHorizontal: 20,
         paddingTop: 10,
@@ -233,6 +170,7 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         marginBottom: 10,
+        backgroundColor: '#4CAF50',
     },
     cancelButton: {
         backgroundColor: '#6c757d',

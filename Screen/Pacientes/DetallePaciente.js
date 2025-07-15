@@ -1,67 +1,82 @@
-// DetallePaciente.js
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'; // Importar ScrollView y Platform
+// Screens/Pacientes/DetallePaciente.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Alert } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { getPacienteById } from '../../Src/Services/PacientesService';
 
 export default function DetallePaciente() {
     const navigation = useNavigation();
     const route = useRoute();
+    const pacienteId = route.params?.paciente.id;
 
-    // Obtener el paciente de los parámetros. Si no hay, usar datos por defecto.
-    const paciente = route.params?.paciente || {
-        id: 'P000',
-        nombre: 'Paciente No Seleccionado',
-        apellido: 'N/A',
-        fechaNacimiento: 'N/A',
-        genero: 'N/A',
-        telefono: 'N/A',
-        email: 'N/A',
-        direccion: 'N/A',
-        fechaRegistro: 'N/A',
-        ultimaActualizacion: 'N/A',
+    const [paciente, setPaciente] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const cargarDetallesPaciente = async () => {
+        if (!pacienteId) return;
+        setLoading(true);
+        try {
+            const result = await getPacienteById(pacienteId);
+            if (result.success) {
+                setPaciente(result.data);
+            } else {
+                Alert.alert("Error", "No se pudieron cargar los detalles del paciente.");
+            }
+        } catch (error) {
+            Alert.alert("Error", "Error de conexión.");
+        } finally {
+            setLoading(false);
+        }
     };
 
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', cargarDetallesPaciente);
+        return unsubscribe;
+    }, [navigation, pacienteId]);
+
+    if (loading) {
+        return (
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#FF6347" />
+            </View>
+        );
+    }
+    
+    if (!paciente) {
+        return (
+            <View style={styles.centered}>
+                <Text>No se encontraron datos para este paciente.</Text>
+            </View>
+        );
+    }
+
     return (
-        <View style={styles.container}> {/* Contenedor principal que ocupa toda la pantalla */}
+        <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>Detalle de Paciente</Text>
                 <Text style={styles.subtitle}>Información detallada del paciente seleccionado:</Text>
 
                 <View style={styles.detailCard}>
                     <Text style={styles.detailLabel}>Nombre Completo:</Text>
-                    <Text style={styles.detailText}>{paciente.nombre} {paciente.apellido}</Text>
+                    <Text style={styles.detailText}>{paciente.nombres} {paciente.apellidos}</Text>
 
-                    <Text style={styles.detailLabel}>Fecha de Nacimiento:</Text>
-                    <Text style={styles.detailText}>{paciente.fechaNacimiento}</Text>
-
-                    <Text style={styles.detailLabel}>Género:</Text>
-                    <Text style={styles.detailText}>{paciente.genero}</Text>
-
+                    <Text style={styles.detailLabel}>Documento:</Text>
+                    <Text style={styles.detailText}>{paciente.documento}</Text>
+                    
                     <Text style={styles.detailLabel}>Teléfono:</Text>
                     <Text style={styles.detailText}>{paciente.telefono}</Text>
 
                     <Text style={styles.detailLabel}>Email:</Text>
                     <Text style={styles.detailText}>{paciente.email}</Text>
-
-                    <Text style={styles.detailLabel}>Dirección:</Text>
-                    <Text style={styles.detailText}>{paciente.direccion}</Text>
-
-                    <Text style={styles.detailLabel}>Fecha de Registro:</Text>
-                    <Text style={styles.detailText}>{paciente.fechaRegistro}</Text>
-
-                    <Text style={styles.detailLabel}>Última Actualización:</Text>
-                    <Text style={styles.detailText}>{paciente.ultimaActualizacion}</Text>
                 </View>
-                {/* Puedes añadir más campos aquí si es necesario */}
             </ScrollView>
 
-            {/* Contenedor fijo para los botones en la parte inferior */}
             <View style={styles.fixedButtonsContainer}>
                 <BotonComponent
                     title="Editar Paciente"
-                    onPress={() => navigation.navigate('EditarPaciente', { paciente: paciente })} // Pasa el paciente a la pantalla de edición
-                    style={styles.editButton} // Estilo específico para el botón de edición
+                    onPress={() => navigation.navigate('EditarPaciente', { paciente: paciente })}
+                    style={styles.editButton}
                 />
             </View>
         </View>
@@ -70,13 +85,18 @@ export default function DetallePaciente() {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1, // Ocupa toda la pantalla
+        flex: 1,
         backgroundColor: "#f0f4f8",
     },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     scrollContent: {
-        flexGrow: 1, // Permite que el contenido del ScrollView crezca y sea desplazable
-        padding: 20, // Padding en el contenido que se desplaza
-        paddingBottom: 20, // Espacio al final del contenido desplazable antes de los botones fijos
+        flexGrow: 1,
+        padding: 20,
+        paddingBottom: 20,
     },
     title: {
         fontSize: 26,
@@ -95,7 +115,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 20,
-        marginBottom: 10, // Menos margen inferior para que el scroll termine antes de los botones fijos
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -116,15 +136,15 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         lineHeight: 22,
     },
-    fixedButtonsContainer: { // Nuevo estilo para el contenedor de botones fijos
+    fixedButtonsContainer: {
         paddingHorizontal: 20,
         paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20, // Más padding en iOS por el safe area inferior
-        backgroundColor: '#f0f4f8', // Mismo color de fondo para que se integre
+        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+        backgroundColor: '#f0f4f8',
         borderTopWidth: 1,
-        borderColor: '#eee', // Borde superior sutil
+        borderColor: '#eee',
     },
     editButton: {
-        backgroundColor: '#4CAF50', // Color verde para el botón de edición
+        backgroundColor: '#FF6347',
     },
 });
