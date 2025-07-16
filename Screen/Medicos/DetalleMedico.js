@@ -3,27 +3,38 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { getMedicoById } from '../../Src/Services/MedicosService'; // 1. IMPORTAR SERVICIO
+import { getMedicoById } from '../../Src/Services/MedicosService';
+import { getUser } from '../../Src/Services/AuthService'; // 1. Importar el servicio de usuario
 
 export default function DetalleMedico() {
     const navigation = useNavigation();
     const route = useRoute();
-    const medicoId = route.params?.medico.id; // Obtenemos el ID de forma segura
+    const medicoId = route.params?.medico.id;
 
-    // 2. ESTADOS PARA MANEJAR DATOS Y CARGA
+    // 2. ESTADOS PARA MANEJAR DATOS, CARGA Y ROL
     const [medico, setMedico] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [userRole, setUserRole] = useState(null);
 
     // 3. FUNCIÓN PARA CARGAR DATOS
     const cargarDetallesMedico = async () => {
         if (!medicoId) return;
         setLoading(true);
         try {
-            const result = await getMedicoById(medicoId);
-            if (result.success) {
-                setMedico(result.data);
+            // Cargar datos en paralelo para eficiencia
+            const [medicoResult, userResult] = await Promise.all([
+                getMedicoById(medicoId),
+                getUser()
+            ]);
+
+            if (medicoResult.success) {
+                setMedico(medicoResult.data);
             } else {
                 Alert.alert("Error", "No se pudieron cargar los detalles del médico.");
+            }
+
+            if (userResult.success) {
+                setUserRole(userResult.user.role);
             }
         } catch (error) {
             Alert.alert("Error", "Error de conexión.");
@@ -78,14 +89,19 @@ export default function DetalleMedico() {
                 <Text style={styles.detailText}>{medico.email}</Text>
             </View>
 
-            <BotonComponent
-                title="Editar Médico"
-                onPress={() => navigation.navigate('EditarMedico', { medico: medico })}
-            />
+            {/* 5. ✅ RENDERIZADO CONDICIONAL DEL BOTÓN */}
+            {/* El botón solo se muestra si el rol es 'administrador' */}
+            {userRole === 'administrador' && (
+                <BotonComponent
+                    title="Editar Médico"
+                    onPress={() => navigation.navigate('EditarMedico', { medico: medico })}
+                />
+            )}
         </ScrollView>
     );
 }
 
+// Tus estilos se mantienen iguales
 const styles = StyleSheet.create({
     container: {
         flexGrow: 1,

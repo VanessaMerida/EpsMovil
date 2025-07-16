@@ -38,21 +38,86 @@ export const logoutUser = async () => {
   }
 };
 
-export const registerUser = async (name, email, password) => {
+/**
+ * Registra un nuevo usuario en la API.
+ * @param {string} name
+ * @param {string} email
+ * @param {string} password
+ * @param {string} role - 'user' o 'administrador'
+ * @param {string|null} admin_code - El código secreto si el rol es 'administrador'
+ */
+export const registerUser = async (userData) => {
+    try {
+        // Ahora pasamos un solo objeto con todos los datos
+        const response = await api.post("/registrar", userData);
+        return { success: true, data: response.data };
+    } catch (error) {
+        console.error("Error de registro:", error.response ? error.response.data : error.message);
+        
+        let errorMessage = "Ocurrió un error al registrar.";
+        if (error.response?.data?.errors) {
+            const validationErrors = Object.values(error.response.data.errors).flat().join('\n');
+            errorMessage = `Por favor, corrige los siguientes errores:\n${validationErrors}`;
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        }
+
+        return {
+            success: false,
+            message: errorMessage,
+        };
+    }
+};
+
+/**
+ * Llama a la API para eliminar la cuenta del usuario autenticado.
+ */
+export const deleteAccount = async () => {
   try {
-    const response = await api.post("/registrar", { name, email, password });
+    // La API usa el token que ya está en la cabecera (configurado en Conexion.js)
+    const response = await api.delete("/user/delete");
+    return { success: true, message: response.data.message };
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'No se pudo procesar la solicitud.' 
+    };
+  }
+};
+
+/**
+ * Obtiene los datos del usuario autenticado desde la API.
+ */
+export const getUser = async () => {
+  try {
+    // Llama al endpoint 'me' que definimos en api.php para obtener el usuario
+    const response = await api.get('/me'); 
+    return { success: true, user: response.data.user };
+  } catch (error) {
+    console.error("Error al obtener datos del usuario:", error.response?.data || error.message);
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'No se pudo obtener la información del usuario.' 
+    };
+  }
+};
+
+/**
+ * Actualiza los datos del perfil del usuario autenticado.
+ * @param {object} userData - Datos del usuario a actualizar (name, email, password opcional).
+ */
+export const updateUserProfile = async (userData) => {
+  try {
+    const response = await api.put('/user/update', userData);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error(
-      "Error de registro:",
-      error.response ? error.response.data : error.message
-    );
-    return {
-      success: false,
-      message: error.response
-        ? error.response.data.message
-        : "Error al registrar. Por favor, inténtalo de nuevo más tarde.",
-    };
+    let errorMessage = "Ocurrió un error al actualizar el perfil.";
+    if (error.response?.data?.errors) {
+        errorMessage = Object.values(error.response.data.errors).flat().join('\n');
+    } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+    }
+    return { success: false, message: errorMessage };
   }
 };
 

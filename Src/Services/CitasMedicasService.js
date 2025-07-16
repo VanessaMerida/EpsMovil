@@ -60,3 +60,12 @@ export const eliminarCitaMedica = async (id) => {
     return { success: false, message: getErrorMessage(error) };
   }
 };
+
+export const actualizarEstadoCita = async (id, nuevoEstado) => {
+  try {
+    const response = await api.patch(`/citas-medicas/${id}/actualizar-estado`, { estado: nuevoEstado });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, message: getErrorMessage(error) };
+  }
+};

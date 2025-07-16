@@ -60,3 +60,13 @@ export const eliminarMedico = async (id) => {
     return { success: false, message: getErrorMessage(error) };
   }
 };
+
+export const crearMedicoYUsuario = async (data) => {
+  try {
+    const response = await api.post("/medicos/crear-con-usuario", data);
+    return { success: true, data: response.data };
+  } catch (error) {
+    // Reutilizamos la función para obtener mensajes de error claros
+    return { success: false, message: getErrorMessage(error) };
+  }
+};

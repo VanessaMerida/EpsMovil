@@ -9,8 +9,9 @@ const ListItemCard = ({
   iconName,
   iconColor,
   onPress,
-  onEdit,   // Nueva prop para la acción de editar
-  onDelete, // Nueva prop para la acción de eliminar
+  onEdit,
+  onDelete,
+  onLongPress, // Añadimos onLongPress para que sea una prop válida
   extraContent,
   style
 }) => {
@@ -18,32 +19,36 @@ const ListItemCard = ({
     <TouchableOpacity
       style={[styles.itemCard, style]}
       onPress={onPress}
+      onLongPress={onLongPress} // Se pasa la prop al TouchableOpacity
       activeOpacity={0.7}
     >
       <View style={styles.itemContent}>
-        {/* Icono principal de la tarjeta */}
         <Ionicons name={iconName} size={24} color={iconColor} style={styles.itemIcon} />
         
-        {/* Contenedor de texto */}
         <View style={styles.itemTextContainer}>
           <Text style={styles.itemTitle}>{title}</Text>
           <Text style={styles.itemDescription}>{description}</Text>
-          {extraContent && <View>{extraContent}</View>} 
+          
+          {/* ✅ LÓGICA CORREGIDA AQUÍ */}
+          {/* Comprobamos si extraContent existe antes de renderizarlo */}
+          {extraContent && (
+            // No necesitamos un <View> adicional, el componente que pasemos ya lo tendrá
+            <>{extraContent}</>
+          )}
+
         </View>
 
-        {/* Contenedor de acciones: Editar y Eliminar */}
         <View style={styles.actionsContainer}>
-          {onEdit && ( // Renderiza el botón de editar solo si se proporciona la función onEdit
+          {onEdit && (
             <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
-              <Ionicons name="create-outline" size={24} color="#1e3799" /> {/* Color azul para editar */}
+              <Ionicons name="create-outline" size={24} color="#1e3799" />
             </TouchableOpacity>
           )}
-          {onDelete && ( // Renderiza el botón de eliminar solo si se proporciona la función onDelete
+          {onDelete && (
             <TouchableOpacity style={styles.actionButton} onPress={onDelete}>
-              <Ionicons name="trash-outline" size={24} color="#dc3545" /> {/* Color rojo para eliminar */}
+              <Ionicons name="trash-outline" size={24} color="#dc3545" />
             </TouchableOpacity>
           )}
-          {/* Icono de flecha para navegación, si no hay botones de acción o si se desea mantener */}
           {!onEdit && !onDelete && <Ionicons name="chevron-forward-outline" size={20} color="#666" />}
         </View>
       </View>
@@ -51,6 +56,7 @@ const ListItemCard = ({
   );
 };
 
+// Tus estilos se mantienen iguales
 const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: '#fff',
@@ -66,14 +72,14 @@ const styles = StyleSheet.create({
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // Asegura espacio entre contenido y acciones
-    flex: 1, // Permite que el contenido ocupe el espacio disponible
+    justifyContent: 'space-between',
+    flex: 1,
   },
   itemIcon: {
     marginRight: 10,
   },
   itemTextContainer: {
-    flex: 1, // Permite que el texto ocupe el espacio restante
+    flex: 1,
   },
   itemTitle: {
     fontSize: 18,
@@ -88,11 +94,11 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 10, // Espacio entre el texto y los botones de acción
+    marginLeft: 10,
   },
   actionButton: {
-    padding: 5, // Espacio alrededor del icono para facilitar el toque
-    marginLeft: 5, // Espacio entre los botones de acción
+    padding: 5,
+    marginLeft: 5,
   },
 });
 

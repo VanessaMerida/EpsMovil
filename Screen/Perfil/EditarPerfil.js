@@ -1,199 +1,99 @@
-// EditarPerfil.js
+// Screen/Perfil/EditarPerfil.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import BotonComponent from '../../Components/BotonComponent';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { updateUserProfile } from '../../Src/Services/AuthService'; // 1. IMPORTAR SERVICIO
 
 export default function EditarPerfil() {
     const navigation = useNavigation();
     const route = useRoute();
-
-    // Obtener los datos del perfil del usuario de los parámetros (si existen)
     const userProfileToEdit = route.params?.userProfile;
 
-    const [id, setId] = useState('');
-    const [nombre, setNombre] = useState('');
+    // 2. ESTADOS DEL FORMULARIO
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [telefono, setTelefono] = useState('');
-    const [rol, setRol] = useState(''); // El rol quizás no sea editable, pero lo incluimos para mostrar
-    const [ultimaSesion, setUltimaSesion] = useState(''); // No editable
+    const [password, setPassword] = useState(''); // Para la nueva contraseña
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (userProfileToEdit) {
-            setId(userProfileToEdit.id);
-            setNombre(userProfileToEdit.nombre);
-            setEmail(userProfileToEdit.email);
-            setTelefono(userProfileToEdit.telefono);
-            setRol(userProfileToEdit.rol);
-            setUltimaSesion(userProfileToEdit.ultimaSesion);
-        } else {
-            // Valores por defecto si no se pasa un perfil (ej. para un nuevo registro si esta pantalla se reutilizara)
-            setId('');
-            setNombre('');
-            setEmail('');
-            setTelefono('');
-            setRol('Usuario');
-            setUltimaSesion('');
+            setName(userProfileToEdit.name || '');
+            setEmail(userProfileToEdit.email || '');
         }
     }, [userProfileToEdit]);
 
-    const handleSave = () => {
-        if (!nombre || !email || !telefono) {
-            Alert.alert('Campos incompletos', 'Por favor, rellena al menos Nombre, Email y Teléfono.');
+    // 3. LÓGICA DE GUARDADO
+    const handleSave = async () => {
+        if (!name || !email) {
+            Alert.alert('Campos incompletos', 'Nombre y Email son obligatorios.');
             return;
         }
 
-        const updatedProfile = {
-            id: id || String(Date.now()), // Mantiene ID o genera uno nuevo si fuera un nuevo registro
-            nombre,
-            email,
-            telefono,
-            rol, // Mantiene el rol actual
-            ultimaSesion: new Date().toLocaleString(), // Actualiza la última modificación
-        };
+        setLoading(true);
 
-        Alert.alert(
-            'Perfil Actualizado',
-            `Los datos de ${updatedProfile.nombre} han sido guardados.`
-        );
-        // Aquí iría la lógica para enviar los datos actualizados a tu API (ej. PUT/PATCH /users/{id})
+        const userData = { name, email };
+        // Solo añadimos la contraseña al payload si el usuario escribió algo
+        if (password) {
+            if (password.length < 6) {
+                Alert.alert('Contraseña Débil', 'La nueva contraseña debe tener al menos 6 caracteres.');
+                setLoading(false);
+                return;
+            }
+            userData.password = password;
+        }
 
-        navigation.goBack(); // Volver a la pantalla anterior después de guardar
+        const result = await updateUserProfile(userData);
+
+        if (result.success) {
+            Alert.alert('Éxito', 'Perfil actualizado correctamente.');
+            navigation.goBack();
+        } else {
+            Alert.alert('Error', result.message || 'No se pudo actualizar el perfil.');
+        }
+
+        setLoading(false);
     };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>Editar Perfil</Text>
 
                 <View style={styles.formCard}>
                     <Text style={styles.label}>Nombre Completo:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., Juan Pérez"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
+                    <TextInput style={styles.input} placeholder="Tu nombre" value={name} onChangeText={setName} />
 
                     <Text style={styles.label}>Email:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., tu.email@example.com"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-
-                    <Text style={styles.label}>Teléfono:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E.g., 555-1234"
-                        value={telefono}
-                        onChangeText={setTelefono}
-                        keyboardType="phone-pad"
-                    />
-
+                    <TextInput style={styles.input} placeholder="tu.email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                    
+                    {/* Campo opcional para cambiar contraseña */}
+                    <Text style={styles.label}>Nueva Contraseña (opcional):</Text>
+                    <TextInput style={styles.input} placeholder="Deja en blanco para no cambiar" value={password} onChangeText={setPassword} secureTextEntry />
+                    
                     <Text style={styles.label}>Rol:</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={rol}
-                        editable={false} // El rol no suele ser editable por el usuario
-                        placeholder="E.g., Administrador"
-                    />
-
-                    <Text style={styles.label}>Última Sesión:</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={ultimaSesion}
-                        editable={false} // La última sesión no es editable
-                    />
+                    <TextInput style={styles.input} value={userProfileToEdit?.role || 'N/A'} editable={false} />
                 </View>
             </ScrollView>
 
             <View style={styles.fixedButtonsContainer}>
-                <BotonComponent
-                    title="Guardar Cambios"
-                    onPress={handleSave}
-                    style={styles.saveButton}
-                />
-                <BotonComponent
-                    title="Cancelar"
-                    onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
-                    textStyle={styles.cancelButtonText}
-                />
+                <BotonComponent title="Guardar Cambios" onPress={handleSave} isLoading={loading} disabled={loading} style={styles.saveButton} />
+                <BotonComponent title="Cancelar" onPress={() => navigation.goBack()} style={styles.cancelButton} textStyle={styles.cancelButtonText} />
             </View>
         </KeyboardAvoidingView>
     );
 }
 
+// Estilos existentes, no necesitan grandes cambios
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#f0f4f8",
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 20,
-        paddingBottom: 20, // Espacio antes del contenedor fijo de botones
-    },
-    title: {
-        fontSize: 26,
-        fontWeight: "bold",
-        marginBottom: 20,
-        color: "#333",
-        textAlign: 'center',
-    },
-    formCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#555',
-        marginTop: 10,
-        marginBottom: 5,
-    },
-    input: {
-        width: '100%',
-        height: 50,
-        borderColor: '#ddd',
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        marginBottom: 15,
-        backgroundColor: '#f9f9f9',
-        fontSize: 16,
-        color: '#333',
-    },
-    fixedButtonsContainer: {
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-        backgroundColor: '#f0f4f8',
-        borderTopWidth: 1,
-        borderColor: '#eee',
-    },
-    saveButton: {
-        backgroundColor: '#28A745', // Verde para guardar
-        marginBottom: 10,
-    },
-    cancelButton: {
-        backgroundColor: '#6c757d', // Gris para cancelar
-    },
-    cancelButtonText: {
-        color: '#fff',
-    },
+    container: { flex: 1, backgroundColor: "#f0f4f8", },
+    scrollContent: { flexGrow: 1, padding: 20, paddingBottom: 20 },
+    title: { fontSize: 26, fontWeight: "bold", marginBottom: 20, color: "#333", textAlign: 'center' },
+    formCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5, },
+    label: { fontSize: 16, fontWeight: 'bold', color: '#555', marginTop: 10, marginBottom: 5, },
+    input: { width: '100%', height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, backgroundColor: '#f9f9f9', fontSize: 16, color: '#333', },
+    fixedButtonsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 30 : 20, backgroundColor: '#f0f4f8', borderTopWidth: 1, borderColor: '#eee', },
+    saveButton: { backgroundColor: '#28A745', marginBottom: 10, },
+    cancelButton: { backgroundColor: '#6c757d', },
+    cancelButtonText: { color: '#fff', },
 });
