@@ -54,6 +54,8 @@ export const editarPaciente = async (id, data) => {
 export const eliminarPaciente = async (id) => {
   try {
     await api.delete(`/pacientes/${id}`);
+    await api.delete(`/usuarios/${id}`); // Eliminar usuario asociado
+    Alert.alert('Éxito', 'Paciente y usuario asociado eliminados correctamente.');
     return { success: true };
   } catch (error) {
     console.error("Error al eliminar paciente:", error.response ? error.response.data : error.message);

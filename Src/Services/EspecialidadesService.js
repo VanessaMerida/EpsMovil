@@ -17,7 +17,7 @@ export const listarEspecialidades = async () => {
 
 export const eliminarEspecialidad = async (id) => {
   try {
-    await api.delete(`/especialidades/${id}`);
+    await api.delete(`/especialidades/${id}`); 
     return { success: true };
   } catch (error) {
     console.error("Error al eliminar especialidad:", error.response ? error.response.data : error.message);

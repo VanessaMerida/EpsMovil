@@ -121,3 +121,16 @@ export const updateUserProfile = async (userData) => {
   }
 };
 
+export const deleteUser = async (userId) => {
+  try {
+    const response = await api.delete(`/user/${userId}`);
+    return { success: true, message: response.data.message };
+  } catch (error) {
+    console.error("Error al eliminar usuario:", error.response ? error.response.data : error.message);
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'No se pudo eliminar el usuario.' 
+    };
+  }
+}
+

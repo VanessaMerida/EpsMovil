@@ -50,6 +50,9 @@ export default function ListarMedicos() {
         return unsubscribe;
     }, [navigation]);
 
+    // 3. Lógica para eliminar un médico
+    // Se muestra un mensaje de confirmación antes de eliminar
+    // y se cambia el rol del usuario a 'user' al eliminar
     const handleEliminar = (medico) => {
         Alert.alert(
             'Confirmar Acción',

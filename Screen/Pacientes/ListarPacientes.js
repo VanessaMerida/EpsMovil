@@ -39,6 +39,8 @@ export default function ListarPacientes() {
     }, [navigation]);
 
     // 5. LÓGICA DE ELIMINACIÓN
+    // Se muestra un mensaje de confirmación antes de eliminar
+    // y se elimina el paciente al confirmar
     const handleEliminar = (id) => {
         Alert.alert('Confirmar Eliminación', '¿Estás seguro de que deseas eliminar este paciente?', [
             { text: 'Cancelar', style: 'cancel' },
