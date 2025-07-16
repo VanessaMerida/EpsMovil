@@ -53,3 +53,16 @@ export const editarEspecialidad= async (id, data) => {
     };
   }
 };
+
+export const getEspecialidadById = async (id) => {
+  try {
+    const response = await api.get(`/especialidades/${id}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error al obtener la especialidad:", error.response ? error.response.data : error.message);
+    return {
+      success: false,
+      message: error.response ? error.response.data.message : "Error de conexión",
+    };
+  }
+};
